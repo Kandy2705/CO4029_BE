@@ -31,35 +31,13 @@ public class ChatboxService
         this.chatbotApiService = chatbotApiService;
     }
 
-    public async Task<IEnumerable<ChatboxReponse>> CreateChatbox(string accessToken, CreateChatboxRequest request)
+    public async Task<ChatbotApiResponse> CreateChatbox(string accessToken, CreateChatboxRequest request)
     {
         var user = await AccessToken.GetUser(accessToken, _supabaseClient, userRepository);
-        
-        var previousMessages = await chatBoxRepository.GetChatboxesByHistoryId(request.History_id!);
 
-        var userMsg = await chatBoxRepository.CreateAsync(new Chatbox
-        {
-            content = request.Content,
-            contact_time = DateTimeHelper.GetVnNow(),
-            contact_person = "user",
-            history_id = request.History_id
-        });
+        var aiResult = await chatbotApiService.AskAsync(request.Content!, request.History_id!, user.id);
 
-        var aiResult = await chatbotApiService.AskAsync(request.Content!, previousMessages);
-
-        var aiContent = aiResult.type == "text"
-            ? aiResult.content.GetString()!
-            : aiResult.content.ToString();
-
-        var aiMsg = await chatBoxRepository.CreateAsync(new Chatbox
-        {
-            content = aiContent,
-            contact_time = DateTimeHelper.GetVnNow(),
-            contact_person = "assistant",
-            history_id = request.History_id
-        });
-
-        return new[] { ChatboxMapper.ToReponse(userMsg), ChatboxMapper.ToReponse(aiMsg) };
+        return aiResult;
     }
 
     public async Task<IEnumerable<ChatboxReponse>> GetAllChatboxes(string accessToken)
