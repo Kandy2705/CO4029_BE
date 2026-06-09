@@ -82,7 +82,7 @@ public class ChatManagementFacade : Controller
         {
             var token = await AccessToken.GetAccessToken(HttpContext);
             var result = await _chatboxService.CreateChatbox(token, createChatboxRequest);
-            return Ok(ApiResponse<ChatbotApiResponse>.Ok(result));
+            return Ok(ApiResponse<ChatbotApiResponse>.Ok(result, message: "Hỏi chatbot thành công"));
         }
         catch (InvalidOperationException ex)
         {
