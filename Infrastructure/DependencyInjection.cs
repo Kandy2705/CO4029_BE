@@ -9,16 +9,18 @@ namespace CO4029_BE.Infrastructure
     {
         public static string supabaseApiKey;
         public static string supabaseUrl;
+        public static string supabaseAdminKey;
         public static IServiceCollection AddInfrastructureServices(
             this IServiceCollection services,
             IConfiguration config)
         {
             supabaseApiKey = config["supabaseApiKey"];
             supabaseUrl = config["supabaseUrl"];
+            supabaseAdminKey = config["SupabaseAdminKey"] ?? supabaseApiKey;
             services.AddSingleton<Supabase.Client>(_ =>
                 new Supabase.Client(
                     supabaseUrl,
-                    supabaseApiKey,
+                    supabaseAdminKey,
                     new SupabaseOptions
                     {
                         AutoRefreshToken = true,
