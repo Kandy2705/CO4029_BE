@@ -1,5 +1,5 @@
-using AgenticAR.Application;
-using AgenticAR.Infrastructure;
+using CO4029_BE.Application;
+using CO4029_BE.Infrastructure;
 using CO4029_BE.API.Contracts.Examples;
 using Microsoft.OpenApi.Models;
 using Supabase;

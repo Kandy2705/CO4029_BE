@@ -2,7 +2,7 @@ using CO4029_BE.Domain.Entities;
 using Supabase;
 using Supabase.Postgrest;
 
-namespace AgenticAR.Infrastructure.Repository
+namespace CO4029_BE.Infrastructure.Repository
 {
     public interface IUserRepository : IRepository<User>
     {

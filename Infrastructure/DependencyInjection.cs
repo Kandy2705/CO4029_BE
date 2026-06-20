@@ -1,9 +1,9 @@
-using AgenticAR.Infrastructure.Repository;
+using CO4029_BE.Infrastructure.Repository;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Supabase;
 
-namespace AgenticAR.Infrastructure
+namespace CO4029_BE.Infrastructure
 {
     public static class DependencyInjection
     {

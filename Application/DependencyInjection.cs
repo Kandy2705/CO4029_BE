@@ -1,8 +1,8 @@
-using AgenticAR.Application.Services;
+using CO4029_BE.Application.Services;
 using CO4029_BE.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace AgenticAR.Application
+namespace CO4029_BE.Application
 {
     public static class DependencyInjection
     {

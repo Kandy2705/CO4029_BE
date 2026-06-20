@@ -1,4 +1,4 @@
-﻿using AgenticAR.Infrastructure.Repository;
+﻿using CO4029_BE.Infrastructure.Repository;
 using CO4029_BE.Domain.Entities;
 using Supabase;
 

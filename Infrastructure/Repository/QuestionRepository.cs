@@ -1,6 +1,6 @@
 ﻿using CO4029_BE.Domain.Entities;
 
-namespace AgenticAR.Infrastructure.Repository
+namespace CO4029_BE.Infrastructure.Repository
 {
     public interface IQuestionRepository : IRepository<Question>
     {

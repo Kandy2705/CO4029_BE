@@ -1,7 +1,7 @@
 using CO4029_BE.API.Contracts.Responses;
 using CO4029_BE.Domain.Entities;
 
-namespace AgenticAR.Infrastructure.Repository
+namespace CO4029_BE.Infrastructure.Repository
 {
     public interface IBuildingRepository : IRepository<Building>
     {

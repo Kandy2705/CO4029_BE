@@ -1,4 +1,4 @@
-﻿using AgenticAR.Infrastructure.Repository;
+﻿using CO4029_BE.Infrastructure.Repository;
 using CO4029_BE.API.Contracts.Mappers;
 using CO4029_BE.API.Contracts.Requests;
 using CO4029_BE.API.Contracts.Responses;
@@ -7,7 +7,7 @@ using CO4029_BE.Utils;
 using Microsoft.IdentityModel.Tokens;
 using Supabase;
 
-namespace AgenticAR.Application.Services;
+namespace CO4029_BE.Application.Services;
 
 public class QuestionService
 {

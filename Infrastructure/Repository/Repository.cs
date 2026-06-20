@@ -2,7 +2,7 @@ using Supabase.Postgrest;
 using Supabase.Postgrest.Interfaces;
 using Supabase.Postgrest.Models;
 
-namespace AgenticAR.Infrastructure.Repository
+namespace CO4029_BE.Infrastructure.Repository
 {
     public interface IRepository<T> where T : BaseModel, new()
     {

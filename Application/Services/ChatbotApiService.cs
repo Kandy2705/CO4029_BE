@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 
-namespace AgenticAR.Application.Services;
+namespace CO4029_BE.Application.Services;
 
 public record ChatbotApiRequest(string message, string history_id, string? user_id);
 public record ChatbotApiResponse(string type, JsonElement? content);
