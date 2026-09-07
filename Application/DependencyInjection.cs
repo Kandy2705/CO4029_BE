@@ -15,6 +15,7 @@ namespace CO4029_BE.Application
             services.AddScoped<CampusService>();
             services.AddScoped<ChatboxService>();
             services.AddScoped<QuestionService>();
+            services.AddScoped<DashboardService>();
             services.AddScoped<EmailService>();
             services.AddHttpClient<ChatbotApiService>();
             return services;
