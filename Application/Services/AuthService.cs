@@ -16,7 +16,7 @@ public class AuthService
     private readonly IOtpCodeRepository _otpCodeRepository;
     private readonly EmailService _emailService;
 
-    public AuthService(UserRepository userRepository
+    public AuthService(IUserRepository userRepository
                      , IOtpCodeRepository otpCodeRepository
                      , Client supabaseClient
                      , EmailService emailService)
