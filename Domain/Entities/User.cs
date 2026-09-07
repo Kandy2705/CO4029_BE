@@ -22,4 +22,7 @@ public class User: BaseModel
     [Column("role")]
     public string? role { get; set; }
 
+    [Column("is_active")]
+    public bool is_active { get; set; } = true;
+
 }

@@ -9,5 +9,5 @@ public class Category: BaseModel
     [PrimaryKey("id", false)]
     public string? ID { get; set; }
     [Column("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = default!;
 }
