@@ -55,6 +55,26 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Configure App Service runtime settings
+        shell: pwsh
+        env:
+          SUPABASE_URL: https://lhmwbucmavlmxdcprcqs.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_doC5WmjpuIbUg8PpBnZMkg_Ug9at2m1
+          ADMIN_ORIGIN: https://kandy2705.github.io
+        run: |
+          $resourceGroup = az webapp list --query "[?name=='ar-agentic'].resourceGroup | [0]" -o tsv
+          if ([string]::IsNullOrWhiteSpace($resourceGroup)) {
+            throw "Could not resolve the Azure resource group for ar-agentic."
+          }
+
+          az webapp config appsettings set `
+            --resource-group $resourceGroup `
+            --name ar-agentic `
+            --settings `
+              "Supabase__Url=$env:SUPABASE_URL" `
+              "Supabase__PublishableKey=$env:SUPABASE_PUBLISHABLE_KEY" `
+              "Cors__AllowedOrigins__0=$env:ADMIN_ORIGIN"
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3

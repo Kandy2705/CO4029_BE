@@ -16,13 +16,14 @@ namespace CO4029_BE.Infrastructure
                 config["supabaseUrl"]);
             var supabaseKey = FirstConfigured(
                 config["Supabase:ServiceRoleKey"],
+                config["Supabase:PublishableKey"],
                 config["SupabaseAdminKey"],
                 config["supabaseApiKey"]);
 
             if (supabaseUrl == null || supabaseKey == null)
             {
                 throw new InvalidOperationException(
-                    "Supabase configuration is missing. Configure Supabase__Url and Supabase__ServiceRoleKey.");
+                    "Supabase configuration is missing. Configure Supabase__Url and either Supabase__ServiceRoleKey or Supabase__PublishableKey.");
             }
 
             services.AddSingleton<Supabase.Client>(_ =>
