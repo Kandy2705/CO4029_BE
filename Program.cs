@@ -13,11 +13,22 @@ builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAnyOrigin", policy =>
+    options.AddPolicy("ConfiguredCors", policy =>
     {
-        policy.AllowAnyOrigin()
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        var allowedOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>() ?? [];
+
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins);
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            policy.AllowAnyOrigin();
+        }
+
+        policy.AllowAnyHeader().AllowAnyMethod();
     });
 
 });
@@ -60,7 +71,7 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
-app.UseCors("AllowAnyOrigin");
+app.UseCors("ConfiguredCors");
 app.UseAuthorization();
 
 app.MapControllers();

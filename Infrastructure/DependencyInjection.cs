@@ -7,20 +7,28 @@ namespace CO4029_BE.Infrastructure
 {
     public static class DependencyInjection
     {
-        public static string supabaseApiKey;
-        public static string supabaseUrl;
-        public static string supabaseAdminKey;
         public static IServiceCollection AddInfrastructureServices(
             this IServiceCollection services,
             IConfiguration config)
         {
-            supabaseApiKey = config["supabaseApiKey"];
-            supabaseUrl = config["supabaseUrl"];
-            supabaseAdminKey = config["SupabaseAdminKey"] ?? supabaseApiKey;
+            var supabaseUrl = FirstConfigured(
+                config["Supabase:Url"],
+                config["supabaseUrl"]);
+            var supabaseKey = FirstConfigured(
+                config["Supabase:ServiceRoleKey"],
+                config["SupabaseAdminKey"],
+                config["supabaseApiKey"]);
+
+            if (supabaseUrl == null || supabaseKey == null)
+            {
+                throw new InvalidOperationException(
+                    "Supabase configuration is missing. Configure Supabase__Url and Supabase__ServiceRoleKey.");
+            }
+
             services.AddSingleton<Supabase.Client>(_ =>
                 new Supabase.Client(
                     supabaseUrl,
-                    supabaseAdminKey,
+                    supabaseKey,
                     new SupabaseOptions
                     {
                         AutoRefreshToken = true,
@@ -38,5 +46,8 @@ namespace CO4029_BE.Infrastructure
             services.AddScoped<IAnswerRepository, AnswerRepository>();
             return services;
         }
+
+        private static string? FirstConfigured(params string?[] values)
+            => values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
     }
 }
