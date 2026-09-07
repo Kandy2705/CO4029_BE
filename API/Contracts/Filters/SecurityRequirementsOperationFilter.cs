@@ -11,11 +11,12 @@ public class SecurityRequirementsOperationFilter : IOperationFilter
         "api/v1/users/update-customer",
         "api/v1/chat",
         "api/v1/buildings",
-        "api/v1/contacts"
+        "api/v1/contacts",
+        "api/v1/admin"
     };
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        string currentEndpoint = context.ApiDescription.RelativePath;
+        string? currentEndpoint = context.ApiDescription.RelativePath;
         if (currentEndpoint != null && listPrefixesNeedProtect.Any(prefix => currentEndpoint.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
         {
             operation.Security = new List<OpenApiSecurityRequirement>

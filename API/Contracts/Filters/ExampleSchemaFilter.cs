@@ -14,10 +14,10 @@ public class ExampleSchemaFilter: ISchemaFilter
         {
             schema.Example = new OpenApiObject
             {
-                { "email", new OpenApiString("tuduong05042003@gmail.com") },
-                { "password", new OpenApiString("tu05042003") },
-                { "name", new OpenApiString("Duong Thanh Tu") },
-                { "phone", new OpenApiString("0966866203") },
+                { "email", new OpenApiString("customer@example.com") },
+                { "password", new OpenApiString("<customer-password>") },
+                { "name", new OpenApiString("Nguyễn Văn A") },
+                { "phone", new OpenApiString("0900000000") },
                 { "birthday", new OpenApiString("2025-12-11T05:33:56.193Z") },
                 { "gender", new OpenApiString("Male") }
             };
@@ -28,8 +28,8 @@ public class ExampleSchemaFilter: ISchemaFilter
         {
             schema.Example = new OpenApiObject
             {
-                { "email", new OpenApiString("tuduong05042003@gmail.com") },
-                { "password", new OpenApiString("tu05042003") }
+                { "email", new OpenApiString("admin@example.com") },
+                { "password", new OpenApiString("<admin-password>") }
             };
         }
 
@@ -37,8 +37,8 @@ public class ExampleSchemaFilter: ISchemaFilter
         {
             schema.Example = new OpenApiObject
             {
-                { "accessToken", new OpenApiString("eyJhbGciOiJIUzI1NiIsImtpZCI6InNDZU9xLzBEUWY2OHlPWjAiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2JmdXZpYW9seWZ4ZGhkaHNzYmFxLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIxY2U3ZGU3OC0zNDhlLTRhZTEtYjhmZi1mNTA2YjYyOThjMmIiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzY1NDM1MjA5LCJpYXQiOjE3NjU0MzE2MDksImVtYWlsIjoidHVkdW9uZzA1MDQyMDAzQGdtYWlsLmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YXRhdGEiOnsiYmlydGhkYXkiOiIyMDI1LTEyLTAyIiwiZW1haWwiOiJ0dWR1b25nMDUwNDIwMDNAZ21haWwuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsIm5hbWUiOiJEdW9uZyBUaGFuaCBUdSIsInBob25lIjoiMDk2Njg2NjIwMyIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiMWNlN2RlNzgtMzQ4ZS00YWUxLWI4ZmYtZjUwNmI2Mjk4YzJiIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9rIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NjU0MzE2MDl9XSwic2Vzc2lvbl9pZCI6ImE5NTk5MGFlLTFkYmUtNDQwZS04YWE4LWQ2Nzc4NzMxYjFjOSIsImlzX2Fub255bW91cyI6ZmFsc2V9.gwTcbv9CvL1NqOoCi3hUh-20rV1elBpB0Q_Sl2B932g") },
-                { "refreshToken", new OpenApiString("mylqn2p7vq2l") },
+                { "accessToken", new OpenApiString("<supabase-access-token>") },
+                { "refreshToken", new OpenApiString("<supabase-refresh-token>") },
                 { "expiresAt", new OpenApiString("2025-12-11T06:40:09.513311") }
             };
         }
@@ -47,12 +47,33 @@ public class ExampleSchemaFilter: ISchemaFilter
         {
             schema.Example = new OpenApiObject
             {
-                { "email", new OpenApiString("tuduong05042003@gmail.com") },
-                { "name", new OpenApiString("Duong Thanh Tu") },
-                { "phone", new OpenApiString("0966866203") },
+                { "id", new OpenApiString("user-123-abc") },
+                { "email", new OpenApiString("customer@example.com") },
+                { "name", new OpenApiString("Nguyễn Văn A") },
+                { "phone", new OpenApiString("0900000000") },
                 { "birthday", new OpenApiString("2025-12-11T05:33:56.193Z") },
                 { "role", new OpenApiString("Customer") },
-                { "gender", new OpenApiString("Male") }
+                { "gender", new OpenApiString("Male") },
+                { "isActive", new OpenApiBoolean(true) }
+            };
+        }
+
+        if (context.Type == typeof(AdminUpdateUserRequest))
+        {
+            schema.Example = new OpenApiObject
+            {
+                { "name", new OpenApiString("Nguyễn Văn A") },
+                { "phone", new OpenApiString("0900000000") },
+                { "gender", new OpenApiString("Male") },
+                { "role", new OpenApiString("Employee") }
+            };
+        }
+
+        if (context.Type == typeof(UpdateUserStatusRequest))
+        {
+            schema.Example = new OpenApiObject
+            {
+                { "isActive", new OpenApiBoolean(false) }
             };
         }
 
@@ -60,8 +81,8 @@ public class ExampleSchemaFilter: ISchemaFilter
         {
             schema.Example = new OpenApiObject
             {
-                { "name", new OpenApiString("Duong Thanh Tu") },
-                { "phone", new OpenApiString("0966866203") },
+                { "name", new OpenApiString("Nguyễn Văn A") },
+                { "phone", new OpenApiString("0900000000") },
                 { "birthday", new OpenApiString("2025-12-11T05:33:56.193Z") },
                 { "gender", new OpenApiString("Male") }
             };
@@ -72,8 +93,8 @@ public class ExampleSchemaFilter: ISchemaFilter
             schema.Example = new OpenApiObject
             {
                 {"email", new OpenApiString("tuduong05042003@gmail.com")},
-                { "newPassword", new OpenApiString("123456789") },
-                { "oldPassword", new OpenApiString("tu05042003") },
+                { "newPassword", new OpenApiString("<new-password>") },
+                { "oldPassword", new OpenApiString("<old-password>") },
                 {"otpCode", new OpenApiString("123456") },
             };
         }
@@ -82,7 +103,7 @@ public class ExampleSchemaFilter: ISchemaFilter
         {
             schema.Example = new OpenApiObject
             {
-                { "Email", new OpenApiString("tuduong05042003@gmail.com") }
+                { "Email", new OpenApiString("customer@example.com") }
             };
         }
 
