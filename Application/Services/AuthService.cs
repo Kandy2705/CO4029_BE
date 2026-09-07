@@ -5,6 +5,7 @@ using CO4029_BE.API.Contracts.Responses;
 using CO4029_BE.Domain.Entities;
 using CO4029_BE.Utils;
 using Supabase;
+using Supabase.Gotrue.Exceptions;
 
 namespace CO4029_BE.Application.Services;
 
@@ -15,7 +16,7 @@ public class AuthService
     private readonly IOtpCodeRepository _otpCodeRepository;
     private readonly EmailService _emailService;
 
-    public AuthService(IUserRepository userRepository
+    public AuthService(UserRepository userRepository
                      , IOtpCodeRepository otpCodeRepository
                      , Client supabaseClient
                      , EmailService emailService)
@@ -27,19 +28,28 @@ public class AuthService
     }
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
-        var session = await _supabaseClient.Auth.SignIn(
-            email: request.Email,
-            password: request.Password
-        );
-        if (session == null || session.User == null) 
-            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng. Xin vui lòng đăng nhập lại !!!");
+        Supabase.Gotrue.Session? session;
+        try
+        {
+            session = await _supabaseClient.Auth.SignIn(
+                email: request.Email,
+                password: request.Password
+            );
+        }
+        catch (GotrueException)
+        {
+            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
+        }
+
+        if (session == null || session.User == null)
+            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
+
         var authUser = session.User;
-        
         var userEmail = authUser.Email;
         if (string.IsNullOrWhiteSpace(userEmail))
             throw new UnauthorizedAccessException("Tài khoản không hợp lệ.");
-        var user = await _userRepository.GetByEmailAsync(userEmail);
 
+        var user = await _userRepository.GetByEmailAsync(userEmail);
         if (user == null)
             throw new KeyNotFoundException("Không tìm thấy user");
 
