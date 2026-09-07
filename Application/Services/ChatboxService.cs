@@ -1,11 +1,9 @@
-﻿using System.Diagnostics;
-using CO4029_BE.Infrastructure.Repository;
+﻿using CO4029_BE.Infrastructure.Repository;
 using CO4029_BE.API.Contracts.Mappers;
 using CO4029_BE.API.Contracts.Requests;
 using CO4029_BE.API.Contracts.Responses;
 using CO4029_BE.Domain.Entities;
 using CO4029_BE.Utils;
-using Microsoft.AspNetCore.Authentication;
 using Supabase;
 
 namespace CO4029_BE.Application.Services;
@@ -35,6 +33,11 @@ public class ChatboxService
     {
         var user = await AccessToken.GetUser(accessToken, _supabaseClient, userRepository);
 
+        var history = await historyRepository.GetByIdAsync(request.History_id!);
+        if (history == null)
+            throw new KeyNotFoundException("Không tìm thấy History với ID đã cung cấp.");
+        EnsureCanReadHistory(user, history);
+
         var aiResult = await chatbotApiService.AskAsync(request.Content!, request.History_id!, user.id);
 
         return aiResult;
@@ -44,7 +47,17 @@ public class ChatboxService
     {
         var user = await AccessToken.GetUser(accessToken, _supabaseClient, userRepository);
 
-        var chatboxes = await chatBoxRepository.GetAllAsync();
+        IEnumerable<Chatbox> chatboxes;
+        if (AuthorizeHelper.AuthorizeForEmployee(user))
+        {
+            chatboxes = await chatBoxRepository.GetAllAsync();
+        }
+        else
+        {
+            var histories = await historyRepository.GetHistorysByUserId(user.id);
+            chatboxes = await chatBoxRepository.GetChatboxesByHistoryIds(
+                histories.Where(history => history.id != null).Select(history => history.id!));
+        }
 
         return chatboxes.Select(c => ChatboxMapper.ToReponse(c));
     }
@@ -54,6 +67,13 @@ public class ChatboxService
         var user = await AccessToken.GetUser(accessToken, _supabaseClient, userRepository);
         
         var chatbox = await chatBoxRepository.GetByIdAsync(chatboxId);
+        if (chatbox == null)
+            throw new KeyNotFoundException("Không tìm thấy Chatbox với ID đã cung cấp.");
+
+        var history = await historyRepository.GetByIdAsync(chatbox.history_id!);
+        if (history == null)
+            throw new KeyNotFoundException("Không tìm thấy History của Chatbox.");
+        EnsureCanReadHistory(user, history);
         
         return ChatboxMapper.ToReponse(chatbox);
     }
@@ -61,6 +81,11 @@ public class ChatboxService
     public async Task<IEnumerable<ChatboxReponse>> GetAllChatboxesByHistory(string accessToken, string historyId)
     {
         var user = await AccessToken.GetUser(accessToken, _supabaseClient, userRepository);
+
+        var history = await historyRepository.GetByIdAsync(historyId);
+        if (history == null)
+            throw new KeyNotFoundException("Không tìm thấy History với ID đã cung cấp.");
+        EnsureCanReadHistory(user, history);
 
         var chatboxes = await chatBoxRepository.GetChatboxesByHistoryId(historyId);
         
@@ -78,18 +103,18 @@ public class ChatboxService
             throw new KeyNotFoundException("Không tìm thấy Chatbox với ID đã cung cấp.");
         }
         
-        var history = await historyRepository.GetByIdAsync(chatbox.history_id);
+        var history = await historyRepository.GetByIdAsync(chatbox.history_id!);
 
         if (history == null)
         {
             throw new KeyNotFoundException("Không tìm thấy History với ID đã cung cấp.");
         }
-        if (user.id != history.user_id || !AuthorizeHelper.AuthorizeForEmployee(user))
+        if (user.id != history.user_id && !AuthorizeHelper.AuthorizeForEmployee(user))
         {
-            throw new AuthenticationFailureException("Bạn không có quyền này");
+            throw new UnauthorizedAccessException("Bạn không có quyền này");
         }
         
-        await chatBoxRepository.DeleteAsync(chatbox.id);
+        await chatBoxRepository.DeleteAsync(chatbox.id!);
 
         return true;
     }
@@ -105,13 +130,19 @@ public class ChatboxService
             throw new KeyNotFoundException("Không tìm thấy History với ID đã cung cấp");
         }
 
-        if (!user.id.Equals(history.user_id) && !AuthorizeHelper.AuthorizeForEmployee(user))
-            throw new AuthenticationFailureException("Bạn không có quyền xóa history này");
+        if (user.id != history.user_id && !AuthorizeHelper.AuthorizeForEmployee(user))
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa history này");
 
         await chatBoxRepository.DeleteByHistoryId(historyId);
         
         await historyRepository.DeleteAsync(historyId);
 
         return true;
+    }
+
+    private static void EnsureCanReadHistory(User user, History history)
+    {
+        if (user.id != history.user_id && !AuthorizeHelper.AuthorizeForEmployee(user))
+            throw new UnauthorizedAccessException("Bạn không có quyền truy cập lịch sử trò chuyện này.");
     }
 }

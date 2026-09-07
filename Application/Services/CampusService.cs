@@ -46,6 +46,8 @@ public class CampusService
         }
 
         var building = await buildingRepository.GetByIdAsync(buildingId);
+        if (building == null)
+            throw new KeyNotFoundException("Không tồn tại building");
         return building.ToReponse();
     }
 
@@ -120,7 +122,8 @@ public class CampusService
         var building = await buildingRepository.GetByIdAsync(buildingId);
         if(building == null) throw new KeyNotFoundException("Không tồn tại building");
         
-        if(building.UserId != user.id) throw new UnauthorizedAccessException("Bạn không có quyền xóa building của người khác");
+        if (!AuthorizeHelper.AuthorizeForAdmin(user) && building.UserId != user.id)
+            throw new UnauthorizedAccessException("Bạn không có quyền xóa building của người khác");
         
         await buildingRepository.DeleteAsync(buildingId);
         

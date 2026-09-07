@@ -314,6 +314,35 @@ public class ContactManagementFacade: Controller
         }
     }
 
+    [HttpGet("questions/{questionId}/answers")]
+    public async Task<ActionResult<IEnumerable<AnswerReponse>>> GetAnswersByQuestion(string questionId)
+    {
+        try
+        {
+            var token = await AccessToken.GetAccessToken(HttpContext);
+            var result = await _questionService.GetAnswersByQuestion(questionId, token);
+            return Ok(ApiResponse<IEnumerable<AnswerReponse>>.Ok(
+                result,
+                message: "Lấy câu trả lời theo câu hỏi thành công"));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(ApiResponse<object?>.Fail(
+                "Yêu cầu xác thực hoặc quyền truy cập không hợp lệ.",
+                "UNAUTHORIZED"));
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(ApiResponse<object?>.Fail("Không tìm thấy câu hỏi.", "NOT_FOUND"));
+        }
+        catch (Exception)
+        {
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                ApiResponse<object?>.Fail("Đã xảy ra lỗi nội bộ.", "INTERNAL_ERROR"));
+        }
+    }
+
     [HttpGet("answers/")]
     public async Task<ActionResult<IEnumerable<AnswerReponse>>> GetAnswers()
     {

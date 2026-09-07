@@ -36,17 +36,21 @@ public class AuthService
         var authUser = session.User;
         
         var userEmail = authUser.Email;
+        if (string.IsNullOrWhiteSpace(userEmail))
+            throw new UnauthorizedAccessException("Tài khoản không hợp lệ.");
         var user = await _userRepository.GetByEmailAsync(userEmail);
 
         if (user == null)
             throw new KeyNotFoundException("Không tìm thấy user");
+
+        if (!user.is_active)
+            throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa.");
 
         return session.ToResponse();
     }
     public async Task<UserReponse> GetMeAsync(string accessToken)
     {
         var user = await AccessToken.GetUser(accessToken, _supabaseClient, _userRepository);
-        user = await _userRepository.GetByEmailAsync(user.email);
         return user.ToResponse();
     }
 
@@ -55,6 +59,8 @@ public class AuthService
         var user = await _userRepository.GetByEmailAsync(email);
         if (user == null)
             throw new KeyNotFoundException("Không tìm thấy user trong database.");
+        if (!user.is_active)
+            throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa.");
         var otps = await _otpCodeRepository.GetAllAsync();
         foreach (var otp in otps)
         {
@@ -62,7 +68,7 @@ public class AuthService
                 throw new InvalidOperationException("User đã được gửi otp code");
         }
         string OTP = OTPGenerator.GenerateOTP();
-        _emailService.SendOTPMail(user.email, OTP);
+        _emailService.SendOTPMail(user.email!, OTP);
         await _otpCodeRepository.CreateAsync(new OtpCode
         {
             otp = OTP,
@@ -73,9 +79,24 @@ public class AuthService
         return true;
     }
 
-    public async Task<UserReponse> ChangePasswordAsync(string email, string otpCode, string newPassword, string oldPassword)
+    public async Task<UserReponse> ChangePasswordAsync(
+        string? email,
+        string? otpCode,
+        string? newPassword,
+        string? oldPassword)
     {
+        if (string.IsNullOrWhiteSpace(email)
+            || string.IsNullOrWhiteSpace(otpCode)
+            || string.IsNullOrWhiteSpace(newPassword)
+            || string.IsNullOrWhiteSpace(oldPassword))
+        {
+            throw new ArgumentException("Thông tin đổi mật khẩu không đầy đủ.");
+        }
+
         var user = await _userRepository.GetByEmailAsync(email);
+
+        if (user == null || !user.is_active)
+            throw new UnauthorizedAccessException("Tài khoản không hợp lệ.");
 
         bool isOtpValid = await VerifyOTPCode(user,otpCode);
         if (!isOtpValid)
@@ -104,7 +125,7 @@ public class AuthService
                 otp.expires_at.HasValue && otp.expires_at.Value > DateTime.UtcNow)
             {
                 otp.is_verified = true;
-                await _otpCodeRepository.UpdateAsync(otp.id, otp);
+                await _otpCodeRepository.UpdateAsync(otp.id!, otp);
                 return true;
             }
         }

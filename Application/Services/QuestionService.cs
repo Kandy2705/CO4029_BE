@@ -37,6 +37,9 @@ public class QuestionService
         {
             throw new UnauthorizedAccessException("Bạn không có quyền để sử dụng API này");
         }
+        if (string.IsNullOrWhiteSpace(categoryRequest.Name))
+            throw new ArgumentException("Tên danh mục là bắt buộc.");
+
         Category category = new Category
         {
             Name = categoryRequest.Name,
@@ -65,6 +68,8 @@ public class QuestionService
         }
 
         var reponse = await _categoryRepository.GetByIdAsync(categoryId);
+        if (reponse == null)
+            throw new KeyNotFoundException("Không tìm thấy danh mục này");
         return reponse.ToReponse();
     }
 
@@ -146,6 +151,8 @@ public class QuestionService
         }
         
         var reponse = await _questionRepository.GetByIdAsync(questionId);
+        if (reponse == null)
+            throw new KeyNotFoundException($"Không tìm thấy câu hỏi với ID: {questionId}");
         return reponse.ToReponse();
     }
 
@@ -240,6 +247,10 @@ public class QuestionService
     public async Task<AnswerReponse> GetAnswer(string answerId, string accessToken)
     {
         var user = await AccessToken.GetUser(accessToken, supabaseClient, _userRepository);
+        if (!AuthorizeHelper.AuthorizeForEmployee(user))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền để sử dụng API này");
+        }
         
         var reponse = await _answerRepository.GetByIdAsync(answerId);
         if (reponse == null)
@@ -264,6 +275,26 @@ public class QuestionService
         }
         var reponse = await _answerRepository.GetAnswersByUser(userId);
         return reponse.Select(answer => answer.ToReponse());
+    }
+
+    public async Task<IEnumerable<AnswerReponse>> GetAnswersByQuestion(
+        string questionId,
+        string accessToken)
+    {
+        var user = await AccessToken.GetUser(accessToken, supabaseClient, _userRepository);
+        if (!AuthorizeHelper.AuthorizeForEmployee(user))
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền để sử dụng API này");
+        }
+
+        var question = await _questionRepository.GetByIdAsync(questionId);
+        if (question == null)
+        {
+            throw new KeyNotFoundException($"Không tìm thấy câu hỏi với ID: {questionId}");
+        }
+
+        var response = await _answerRepository.GetAnswersByQuestion(questionId);
+        return response.Select(answer => answer.ToReponse());
     }
 
     public async Task<AnswerReponse> UpdateAnswer(CreateAnswerRequest answerRequest, string answerId, string accessToken)
