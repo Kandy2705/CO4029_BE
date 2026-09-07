@@ -6,14 +6,14 @@ namespace CO4029_BE.Utils;
 
 public static class AccessToken
 {
-    public static async Task<String> GetAccessToken(HttpContext context)
+    public static Task<string> GetAccessToken(HttpContext context)
     {
-        string authorizationHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+        string? authorizationHeader = context.Request.Headers["Authorization"].FirstOrDefault();
         if (string.IsNullOrEmpty(authorizationHeader) || !authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Thiếu Access token trong header hoặc sai định dạng (Bearer ...)");
         }
-        return authorizationHeader.Substring("Bearer ".Length).Trim();
+        return Task.FromResult(authorizationHeader.Substring("Bearer ".Length).Trim());
     }
     
     public static async Task<User> GetUser(string accessToken, Client _supabaseClient, IUserRepository _userRepository)
@@ -25,10 +25,22 @@ public static class AccessToken
             throw new UnauthorizedAccessException("Token Supabase không hợp lệ hoặc đã hết hạn.");
         var email = gotrueUser.Email;
         if (string.IsNullOrEmpty(email))
-            throw new Exception("Không lấy được email từ Supabase user.");
+            throw new UnauthorizedAccessException("Token không chứa tài khoản hợp lệ.");
         var user = await _userRepository.GetByEmailAsync(email);
         if (user == null)
-            throw new Exception("Không tìm thấy user trong database.");
+            throw new UnauthorizedAccessException("Tài khoản không hợp lệ.");
+        if (!user.is_active)
+            throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa.");
+        return user;
+    }
+
+    public static async Task<User> GetAdminUser(
+        string accessToken,
+        Client supabaseClient,
+        IUserRepository userRepository)
+    {
+        var user = await GetUser(accessToken, supabaseClient, userRepository);
+        AuthorizeHelper.EnsureAdmin(user);
         return user;
     }
 }
