@@ -7,10 +7,11 @@ namespace CO4029_BE.Infrastructure.Repository
     public interface IRepository<T> where T : BaseModel, new()
     {
         Task<IEnumerable<T>> GetAllAsync();
-        Task<T> GetByIdAsync(string id);
+        Task<T?> GetByIdAsync(string id);
         Task<T> CreateAsync(T entity);
         Task UpdateAsync(string id, T entity);
         Task DeleteAsync(string id);
+        Task<int> CountAsync();
     }
 
     public class Repository<T> : IRepository<T> where T : BaseModel, new()
@@ -30,7 +31,7 @@ namespace CO4029_BE.Infrastructure.Repository
             return response.Models;
         }
 
-        public async Task<T> GetByIdAsync(string id)
+        public async Task<T?> GetByIdAsync(string id)
         {
             var model = await Table
                 .Filter("id", Constants.Operator.Equals, id)
@@ -57,6 +58,13 @@ namespace CO4029_BE.Infrastructure.Repository
             await Table
                 .Filter("id", Constants.Operator.Equals, id)
                 .Delete();
+        }
+
+        public async Task<int> CountAsync()
+        {
+            return await Client.Postgrest
+                .Table<T>()
+                .Count(Constants.CountType.Exact);
         }
     }
 }
