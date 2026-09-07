@@ -10,5 +10,6 @@ public static class HistoryMapper
         Id = history.id,
         Header = history.header,
         Create_date = history.create_date,
+        UserId = history.user_id,
     };
 }
