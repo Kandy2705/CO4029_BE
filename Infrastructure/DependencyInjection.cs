@@ -41,6 +41,8 @@ namespace CO4029_BE.Infrastructure
             services.AddScoped<IOtpCodeRepository, OtpCodeRepository>();
             services.AddScoped<IHistoryRepository, HistoryRepository>();
             services.AddScoped<IBuildingRepository, BuildingRepository>();
+            services.AddScoped<IFloorRepository, FloorRepository>();
+            services.AddScoped<IRoomRepository, RoomRepository>();
             services.AddScoped<IChatBoxRepository, ChatBoxRepository>();
             services.AddScoped<ICategoryRepository, CategoryRepository>();
             services.AddScoped<IQuestionRepository, QuestionRepository>();

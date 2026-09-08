@@ -13,6 +13,7 @@ namespace CO4029_BE.Application
             services.AddScoped<UserService>();
             services.AddScoped<HistoryService>();
             services.AddScoped<CampusService>();
+            services.AddScoped<CampusLocationService>();
             services.AddScoped<ChatboxService>();
             services.AddScoped<QuestionService>();
             services.AddScoped<DashboardService>();
