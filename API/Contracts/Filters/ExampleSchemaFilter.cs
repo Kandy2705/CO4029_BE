@@ -130,8 +130,8 @@ public class ExampleSchemaFilter: ISchemaFilter
             {
                 { "Name", new OpenApiString("B4") },
                 { "Content", new OpenApiString("B4 gần Circle K") },
-                { "Latitude", new OpenApiFloat(14.55f) },
-                { "Longitude", new OpenApiFloat(12.55f) },
+                { "Latitude", new OpenApiDouble(10.7724867) },
+                { "Longitude", new OpenApiDouble(106.6583104) },
                 { "UserId", new OpenApiString("1231241424894893") },
             };
         }
@@ -142,8 +142,8 @@ public class ExampleSchemaFilter: ISchemaFilter
             {
                 { "Name", new OpenApiString("B4") },
                 { "Content", new OpenApiString("B4 gần Circle K") },
-                { "Latitude", new OpenApiFloat(14.55f) },
-                { "Longitude", new OpenApiFloat(12.55f) }
+                { "Latitude", new OpenApiDouble(10.7724867) },
+                { "Longitude", new OpenApiDouble(106.6583104) }
             };
         }
 
@@ -154,8 +154,8 @@ public class ExampleSchemaFilter: ISchemaFilter
                 {"Id", new OpenApiString("31232178784398") },
                 { "Name", new OpenApiString("B4") },
                 { "Content", new OpenApiString("B4 gần Circle K") },
-                { "Latitude", new OpenApiFloat(14.55f) },
-                { "Longitude", new OpenApiFloat(12.55f) }
+                { "Latitude", new OpenApiDouble(10.7724867) },
+                { "Longitude", new OpenApiDouble(106.6583104) }
             };
         }
 

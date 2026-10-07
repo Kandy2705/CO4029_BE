@@ -4,6 +4,8 @@
 
 Run `Database/Migrations/20260907_add_user_is_active.sql` in the Supabase SQL editor before deploying the updated API. The migration keeps every existing user enabled by using `NOT NULL DEFAULT true`.
 
+Run `Database/Migrations/20261007_building_coordinates_double_precision.sql` as well. It widens `building.latitude/longitude` from `real` (about 7 significant digits, so longitude kept only about 4 decimals and could be several metres off) to `double precision`, which matches the `double?` properties in the API. Existing values stay as they are, so re-pick buildings on the admin map to get full precision.
+
 ## Bootstrap the first Admin
 
 The public registration API intentionally continues to create only `Customer` accounts. After creating the first account through the existing registration flow, promote that account from a trusted Supabase SQL session:

@@ -13,9 +13,9 @@ public class Building: BaseModel
     [Column("name")]
     public string? Name { get; set; }
     [Column("latitude")]
-    public float? Latitude { get; set; }
+    public double? Latitude { get; set; }
     [Column("longitude")]
-    public float? Longitude { get; set; }
+    public double? Longitude { get; set; }
     [Column("user_id")]
     public string? UserId { get; set; }
 }
