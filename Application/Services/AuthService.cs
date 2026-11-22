@@ -2,90 +2,62 @@ using CO4029_BE.Infrastructure.Repository;
 using CO4029_BE.API.Contracts.Mappers;
 using CO4029_BE.API.Contracts.Requests;
 using CO4029_BE.API.Contracts.Responses;
-using CO4029_BE.Domain.Entities;
+using CO4029_BE.Application.Abstractions;
 using CO4029_BE.Utils;
-using Supabase;
-using Supabase.Gotrue.Exceptions;
 
 namespace CO4029_BE.Application.Services;
 
 public class AuthService
 {
     private readonly IUserRepository _userRepository;
-    private readonly Client _supabaseClient;
-    private readonly IOtpCodeRepository _otpCodeRepository;
-    private readonly EmailService _emailService;
+    private readonly OtpService _otp;
+    private readonly IAuthGateway _auth;
+    private readonly ICurrentUserResolver _currentUser;
 
     public AuthService(IUserRepository userRepository
-                     , IOtpCodeRepository otpCodeRepository
-                     , Client supabaseClient
-                     , EmailService emailService)
+                     , OtpService otp
+                     , IAuthGateway auth
+                     , ICurrentUserResolver currentUser)
     {
         _userRepository = userRepository;
-        _supabaseClient = supabaseClient;
-        _otpCodeRepository = otpCodeRepository;
-        _emailService = emailService;
+        _otp = otp;
+        _auth = auth;
+        _currentUser = currentUser;
     }
+
+    /// <summary>
+    /// Signs in through the Auth REST API. The shared Supabase client is never signed in as the user, so
+    /// later database calls keep running with the server key instead of the last user's JWT.
+    /// </summary>
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
     {
-        Supabase.Gotrue.Session? session;
-        try
-        {
-            session = await _supabaseClient.Auth.SignIn(
-                email: request.Email,
-                password: request.Password
-            );
-        }
-        catch (GotrueException)
-        {
-            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
-        }
-
-        if (session == null || session.User == null)
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrEmpty(request.Password))
             throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
 
-        var authUser = session.User;
-        var userEmail = authUser.Email;
-        if (string.IsNullOrWhiteSpace(userEmail))
-            throw new UnauthorizedAccessException("Tài khoản không hợp lệ.");
+        var session = await _auth.SignInAsync(request.Email.Trim(), request.Password);
+        if (session == null)
+            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
 
-        var user = await _userRepository.GetByEmailAsync(userEmail);
-        if (user == null)
-            throw new KeyNotFoundException("Không tìm thấy user");
-
-        if (!user.is_active)
-            throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa.");
-
-        return session.ToResponse();
+        // Rejects accounts without an application profile and deactivated accounts.
+        await _currentUser.ResolveAsync(session.AccessToken);
+        return session;
     }
+
     public async Task<UserReponse> GetMeAsync(string accessToken)
     {
-        var user = await AccessToken.GetUser(accessToken, _supabaseClient, _userRepository);
+        var user = await _currentUser.ResolveAsync(accessToken);
         return user.ToResponse();
     }
 
     public async Task<bool> SendOtpCode(string email)
     {
-        var user = await _userRepository.GetByEmailAsync(email);
+        var address = InputValidator.RequireEmail(email);
+        var user = await _userRepository.GetByEmailAsync(address);
         if (user == null)
             throw new KeyNotFoundException("Không tìm thấy user trong database.");
         if (!user.is_active)
             throw new UnauthorizedAccessException("Tài khoản đã bị vô hiệu hóa.");
-        var otps = await _otpCodeRepository.GetAllAsync();
-        foreach (var otp in otps)
-        {
-            if (otp.email == user.email && otp.is_verified == false)
-                throw new InvalidOperationException("User đã được gửi otp code");
-        }
-        string OTP = OTPGenerator.GenerateOTP();
-        _emailService.SendOTPMail(user.email!, OTP);
-        await _otpCodeRepository.CreateAsync(new OtpCode
-        {
-            otp = OTP,
-            email = user.email,
-            expires_at = DateTime.UtcNow.AddMinutes(5),
-            created_at = DateTime.UtcNow
-        });
+        await _otp.IssueAsync(OtpPurpose.PasswordChange(address), user.email!);
         return true;
     }
 
@@ -102,44 +74,20 @@ public class AuthService
         {
             throw new ArgumentException("Thông tin đổi mật khẩu không đầy đủ.");
         }
+        InputValidator.RequirePassword(newPassword, "Mật khẩu mới");
 
-        var user = await _userRepository.GetByEmailAsync(email);
-
-        if (user == null || !user.is_active)
+        var address = email.Trim();
+        var user = await _userRepository.GetByEmailAsync(address);
+        if (user == null || !user.is_active || string.IsNullOrEmpty(user.id))
             throw new UnauthorizedAccessException("Tài khoản không hợp lệ.");
 
-        bool isOtpValid = await VerifyOTPCode(user,otpCode);
-        if (!isOtpValid)
-        {
-            throw new Exception("OTP không hợp lệ hoặc đã hết hạn.");
-        }
-        var session = await _supabaseClient.Auth.SignInWithPassword(email, oldPassword);
-        if (session == null)
-            throw new Exception("Mật khẩu cũ không chính xác. Vui lòng thử lại.");
-        var updatedResult = await _supabaseClient.Auth.Update(new Supabase.Gotrue.UserAttributes
-        {
-            Password = newPassword
-        });
-        if (updatedResult == null)
-            throw new Exception("Không thể thay đổi mật khẩu cho người dùng.");
+        // Check the old password first so a typo does not burn the one-time code.
+        if (await _auth.SignInAsync(address, oldPassword) == null)
+            throw new UnauthorizedAccessException("Mật khẩu cũ không chính xác. Vui lòng thử lại.");
+        if (!await _otp.ConsumeAsync(OtpPurpose.PasswordChange(address), otpCode))
+            throw new ArgumentException(AccountService.InvalidOtpMessage);
+
+        await _auth.UpdatePasswordAsync(user.id, newPassword);
         return user.ToResponse();
-    }
-
-    private async Task<bool> VerifyOTPCode(User user, string otpCode)
-    {
-        var otps =  await _otpCodeRepository.GetAllAsync();
-        foreach (var otp in otps)
-        {
-            if (otp.email == user.email && otp.is_verified == false &&
-                String.Equals(otp.otp, otpCode) &&
-                otp.expires_at.HasValue && otp.expires_at.Value > DateTime.UtcNow)
-            {
-                otp.is_verified = true;
-                await _otpCodeRepository.UpdateAsync(otp.id!, otp);
-                return true;
-            }
-        }
-
-        return false;
     }
 }

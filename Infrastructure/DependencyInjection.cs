@@ -1,3 +1,5 @@
+using CO4029_BE.Application.Abstractions;
+using CO4029_BE.Infrastructure.Auth;
 using CO4029_BE.Infrastructure.Repository;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -37,6 +39,8 @@ namespace CO4029_BE.Infrastructure
                     }
                 )
             );
+            services.AddHttpClient<IAuthGateway, SupabaseAuthGateway>();
+            services.AddScoped<ICurrentUserResolver, SupabaseCurrentUserResolver>();
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IOtpCodeRepository, OtpCodeRepository>();
             services.AddScoped<IHistoryRepository, HistoryRepository>();

@@ -76,3 +76,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.Run();
+
+// Exposes the entry point to WebApplicationFactory in the xUnit project.
+public partial class Program { }

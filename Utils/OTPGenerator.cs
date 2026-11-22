@@ -1,15 +1,22 @@
-﻿namespace CO4029_BE.Utils;
+using System.Security.Cryptography;
 
-public class OTPGenerator
+namespace CO4029_BE.Utils;
+
+public static class OTPGenerator
 {
+    /// <summary>
+    /// Generates a numeric one-time code with a cryptographically secure RNG. Every digit 0–9 is
+    /// equally likely (the previous implementation used <c>Random.Next(0, 9)</c>, which never produced 9).
+    /// </summary>
     public static string GenerateOTP(int length = 4)
     {
-        Random random = new Random();
-        string otp = "";
+        if (length < 1)
+            throw new ArgumentOutOfRangeException(nameof(length));
+        var digits = new char[length];
         for (int i = 0; i < length; i++)
         {
-            otp += random.Next(0, 9).ToString();
+            digits[i] = (char)('0' + RandomNumberGenerator.GetInt32(0, 10));
         }
-        return otp;
+        return new string(digits);
     }
 }

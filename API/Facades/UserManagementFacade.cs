@@ -1,11 +1,9 @@
+using CO4029_BE.Application.Exceptions;
 using CO4029_BE.Application.Services;
-using CO4029_BE.Infrastructure.Repository;
 using CO4029_BE.API.Contracts.Requests;
 using CO4029_BE.API.Contracts.Responses;
 using CO4029_BE.Utils;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Supabase;
 
 namespace CO4029_BE.Facades;
 
@@ -15,183 +13,128 @@ public class UserManagementFacade : Controller
 {
     private readonly UserService userService;
     private readonly AuthService authService;
+    private readonly AccountService accountService;
+    private readonly ILogger<UserManagementFacade> logger;
 
-    public UserManagementFacade(UserService userService, AuthService authService)
+    public UserManagementFacade(UserService userService, AuthService authService, AccountService accountService,
+        ILogger<UserManagementFacade> logger)
     {
         this.userService = userService;
         this.authService = authService;
+        this.accountService = accountService;
+        this.logger = logger;
     }
 
+    // ---------- Registration ----------
+
+    /// <summary>Sends a 4-digit code to an email that has no account yet (409 if it already has one).</summary>
+    [HttpPost("register/request-otp")]
+    public Task<ActionResult> RequestRegisterOtp([FromBody] SendOTPRequest request)
+        => Execute(async () =>
+        {
+            await accountService.RequestRegisterOtpAsync(request.Email);
+            return true;
+        }, "Đã gửi mã OTP đăng ký");
+
+    /// <summary>Checks a registration or reset code without consuming it (data = true/false).</summary>
+    [HttpPost("verify-otp")]
+    public Task<ActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+        => Execute(() => accountService.VerifyOtpAsync(request), "Đã kiểm tra mã OTP");
+
+    /// <summary>Creates a customer account; requires the code from register/request-otp.</summary>
     [HttpPost("create-customer")]
-    public async Task<ActionResult<UserReponse>> RegisterCustomer([FromBody] CreateUserRequest request)
-    {
-        try
-        {
-            var result = await userService.RegisterCustomerAsync(request);
-            return Ok(ApiResponse<UserReponse>.Ok(result, message: "Tạo user thành công"));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<object?>.Fail(ex.Message, "CONFLICT"));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object?>.Fail(ex.Message, "UNAUTHORIZED"));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object?>.Fail(ex.Message, "NOT_FOUND"));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object?>.Fail(ex.Message, "INTERNAL_ERROR"));
-        }
-    }
+    public Task<ActionResult> RegisterCustomer([FromBody] CreateUserRequest request)
+        => Execute(() => userService.RegisterCustomerAsync(request), "Tạo user thành công");
+
+    // ---------- Session ----------
 
     [HttpPost("login")]
-    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
-    {
-        try
-        {
-            var result = await authService.LoginAsync(request);
-            return Ok(ApiResponse<LoginResponse>.Ok(result, "Đăng nhập thành công"));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<object?>.Fail(ex.Message, "CONFLICT"));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object?>.Fail(ex.Message, "UNAUTHORIZED"));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object?>.Fail(ex.Message, "NOT_FOUND"));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object?>.Fail(ex.Message, "INTERNAL_ERROR"));
-        }
-    }
-    
+    public Task<ActionResult> Login([FromBody] LoginRequest request)
+        => Execute(() => authService.LoginAsync(request), "Đăng nhập thành công");
+
+    /// <summary>Exchanges a refresh token for a new access token.</summary>
+    [HttpPost("refresh-token")]
+    public Task<ActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+        => Execute(() => accountService.RefreshAsync(request.RefreshToken), "Làm mới phiên đăng nhập thành công");
+
     [HttpGet("me")]
-    public async Task<ActionResult<UserReponse>> GetMe()
-    {
-        try
-        {
-            var token = await AccessToken.GetAccessToken(HttpContext);
-
-            var result = await authService.GetMeAsync(token);
-            return Ok(ApiResponse<UserReponse>.Ok(result, message: "Lấy thông tin bản thân thành công"));
-
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<object?>.Fail(ex.Message, "CONFLICT"));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object?>.Fail(ex.Message, "UNAUTHORIZED"));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object?>.Fail(ex.Message, "NOT_FOUND"));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object?>.Fail(ex.Message, "INTERNAL_ERROR"));
-        }
-    }
+    public Task<ActionResult> GetMe()
+        => ExecuteWithToken(token => authService.GetMeAsync(token), "Lấy thông tin bản thân thành công");
 
     [HttpPut("update-customer")]
-    public async Task<ActionResult<UserReponse>> Update([FromBody] UpdateUserRequest request)
-    {
-        try
-        {
-            var token = await AccessToken.GetAccessToken(HttpContext);
-            
-            var result = await userService.UpdateUserAsync(request, token);
-            return Ok(ApiResponse<UserReponse>.Ok(result,"Cập nhật người dùng thành công"));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<object?>.Fail(ex.Message, "CONFLICT"));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object?>.Fail(ex.Message, "UNAUTHORIZED"));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object?>.Fail(ex.Message, "NOT_FOUND"));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object?>.Fail(ex.Message, "INTERNAL_ERROR"));
-        }
-    }
+    public Task<ActionResult> Update([FromBody] UpdateUserRequest request)
+        => ExecuteWithToken(token => userService.UpdateUserAsync(request, token), "Cập nhật người dùng thành công");
+
+    // ---------- Password ----------
 
     [HttpPost("request-password-change")]
-    public async Task<ActionResult> RequestPasswordChange([FromBody] SendOTPRequest request)
-    {
-        try
-        {
-            var email = request.Email;
-            bool result = await authService.SendOtpCode(email);
-            return Ok(ApiResponse<bool>.Ok(result, message: "Đã gửi OTP code"));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(ApiResponse<object?>.Fail(ex.Message, "CONFLICT"));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return Unauthorized(ApiResponse<object?>.Fail(ex.Message, "UNAUTHORIZED"));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object?>.Fail(ex.Message, "NOT_FOUND"));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object?>.Fail(ex.Message, "INTERNAL_ERROR"));
-        }
-    }
+    public Task<ActionResult> RequestPasswordChange([FromBody] SendOTPRequest request)
+        => Execute(() => authService.SendOtpCode(request.Email), "Đã gửi OTP code");
 
     [HttpPost("change-password")]
-    public async Task<ActionResult<UserReponse>> ChangePassword([FromBody]  ChangePasswordRequest request)
-    {
-        try
+    public Task<ActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        => Execute(() => authService.ChangePasswordAsync(
+            request.email, request.otpCode, request.newPassword, request.oldPassword), "Đổi mật khẩu thành công");
+
+    /// <summary>
+    /// Starts a password reset. The response is the same whether or not the email has an account.
+    /// </summary>
+    [HttpPost("forgot-password")]
+    public Task<ActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        => Execute(async () =>
         {
-            var result = await authService.ChangePasswordAsync(request.email,request.otpCode, request.newPassword, request.oldPassword);
-            return Ok(ApiResponse<UserReponse>.Ok(result, message: "Đổi mật khẩu thành công"));
-        }
-        catch (InvalidOperationException ex)
+            await accountService.RequestPasswordResetAsync(request.Email);
+            return true;
+        }, "Nếu email đã đăng ký, mã OTP đã được gửi tới email đó");
+
+    [HttpPost("reset-password")]
+    public Task<ActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        => Execute(async () =>
         {
-            return Conflict(ApiResponse<object?>.Fail(ex.Message, "CONFLICT"));
-        }
-        catch (UnauthorizedAccessException ex)
+            await accountService.ResetPasswordAsync(request);
+            return true;
+        }, "Đặt lại mật khẩu thành công");
+
+    // ---------- Email change ----------
+
+    /// <summary>Sends a code to the new email address of the signed-in user.</summary>
+    [HttpPost("request-email-change")]
+    public Task<ActionResult> RequestEmailChange([FromBody] RequestEmailChangeRequest request)
+        => ExecuteWithToken(async token =>
         {
-            return Unauthorized(ApiResponse<object?>.Fail(ex.Message, "UNAUTHORIZED"));
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object?>.Fail(ex.Message, "NOT_FOUND"));
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, ApiResponse<object?>.Fail(ex.Message, "INTERNAL_ERROR"));
-        }
-    }
+            await accountService.RequestEmailChangeAsync(token, request.NewEmail);
+            return true;
+        }, "Đã gửi mã OTP tới email mới");
+
+    [HttpPost("change-email")]
+    public Task<ActionResult> ChangeEmail([FromBody] ChangeEmailRequest request)
+        => ExecuteWithToken(token => accountService.ChangeEmailAsync(token, request), "Đổi email thành công");
 
     [HttpDelete("delete-user")]
-    public async Task<ActionResult> DeleteUser()
+    public Task<ActionResult> DeleteUser()
+        => ExecuteWithToken(token => userService.DeleteUserAsync(token), "Xóa người dùng thành công");
+
+    // ---------- Helpers ----------
+
+    private async Task<ActionResult> ExecuteWithToken<T>(Func<string, Task<T>> action, string message)
+        => await Execute(async () => await action(await AccessToken.GetAccessToken(HttpContext)), message);
+
+    private async Task<ActionResult> Execute<T>(Func<Task<T>> action, string message)
     {
         try
         {
-            var token = await AccessToken.GetAccessToken(HttpContext);
-            var result = await userService.DeleteUserAsync(token);
-            return Ok(ApiResponse<bool>.Ok(result, message: "Xóa người dùng thành công"));
+            var result = await action();
+            return Ok(ApiResponse<T>.Ok(result, message));
+        }
+        catch (OtpCooldownException ex)
+        {
+            Response.Headers.RetryAfter = ex.RetryAfterSeconds.ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests,
+                ApiResponse<object?>.Fail(ex.Message, "TOO_MANY_REQUESTS"));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object?>.Fail(ex.Message, "BAD_REQUEST"));
         }
         catch (InvalidOperationException ex)
         {
@@ -201,13 +144,18 @@ public class UserManagementFacade : Controller
         {
             return Unauthorized(ApiResponse<object?>.Fail(ex.Message, "UNAUTHORIZED"));
         }
+        catch (ForbiddenAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object?>.Fail(ex.Message, "FORBIDDEN"));
+        }
         catch (KeyNotFoundException ex)
         {
             return NotFound(ApiResponse<object?>.Fail(ex.Message, "NOT_FOUND"));
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<object?>.Fail(ex.Message, "INTERNAL_ERROR"));
+            logger.LogError(ex, "Unhandled error in {Path}", Request.Path);
+            return StatusCode(500, ApiResponse<object?>.Fail("Lỗi hệ thống, vui lòng thử lại sau.", "INTERNAL_ERROR"));
         }
     }
 }

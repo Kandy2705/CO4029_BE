@@ -4,7 +4,7 @@ using System;
 
 namespace CO4029_BE.Utils;
 
-public class EmailService
+public class EmailService : CO4029_BE.Application.Abstractions.IOtpMailer
 {
     private string _senderEmail;
     private string _appPassword;

@@ -9,4 +9,7 @@ public class CreateUserRequest
     public string? Phone { get; set; }
     public DateTime? Birthday { get; set; }
     public string? Gender { get; set; }
+
+    /// <summary>Code sent by POST /users/register/request-otp; proves the email belongs to the registrant.</summary>
+    public string? OtpCode { get; set; }
 }

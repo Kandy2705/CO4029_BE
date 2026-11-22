@@ -17,12 +17,13 @@ namespace CO4029_BE.Infrastructure.Repository
     public class Repository<T> : IRepository<T> where T : BaseModel, new()
     {
         protected readonly Supabase.Client Client;
-        protected readonly IPostgrestTable<T> Table;
+        // A fresh query builder per call: Postgrest tables accumulate filters, so reusing one instance
+        // made a second query in the same request inherit the first query's filters.
+        protected IPostgrestTable<T> Table => Client.Postgrest.Table<T>();
 
         public Repository(Supabase.Client client)
         {
             Client = client;
-            Table = Client.Postgrest.Table<T>();
         }
 
         public async Task<IEnumerable<T>> GetAllAsync()

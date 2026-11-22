@@ -2,6 +2,7 @@ using CO4029_BE.Infrastructure.Repository;
 using CO4029_BE.API.Contracts.Mappers;
 using CO4029_BE.API.Contracts.Requests;
 using CO4029_BE.API.Contracts.Responses;
+using CO4029_BE.Application.Abstractions;
 using CO4029_BE.Domain.Constants;
 using CO4029_BE.Domain.Entities;
 using CO4029_BE.Utils;
@@ -13,20 +14,32 @@ public class UserService
 {
     private readonly IUserRepository _userRepository;
     private readonly Client _supabaseClient;
-    private readonly IConfiguration configuration;
+    private readonly OtpService _otp;
+    private readonly IAuthGateway _auth;
 
-    public UserService(IUserRepository userRepository, Client supabaseClient, IConfiguration configuration)
+    public UserService(IUserRepository userRepository, Client supabaseClient, OtpService otp, IAuthGateway auth)
     {
         _userRepository = userRepository;
         _supabaseClient = supabaseClient;
-        this.configuration = configuration;
+        _otp = otp;
+        _auth = auth;
     }
 
+    /// <summary>
+    /// Creates a customer once the registration OTP proves the email belongs to the registrant. The Auth
+    /// user is created already confirmed through the admin API, so no confirmation link is needed.
+    /// </summary>
     public async Task<UserReponse> RegisterCustomerAsync(CreateUserRequest request)
     {
-        var existing = await _userRepository.GetByEmailAsync(request.Email);
+        var email = InputValidator.RequireEmail(request.Email);
+        var password = InputValidator.RequirePassword(request.Password);
+        var otpCode = InputValidator.RequireOtp(request.OtpCode);
+
+        var existing = await _userRepository.GetByEmailAsync(email);
         if (existing != null)
             throw new InvalidOperationException("Email đã được sử dụng.");
+        if (!await _otp.ConsumeAsync(OtpPurpose.Register(email), otpCode))
+            throw new ArgumentException(AccountService.InvalidOtpMessage);
 
         var metadata = new Dictionary<string, object>
         {
@@ -35,23 +48,12 @@ public class UserService
             ["birthday"] = request.Birthday?.ToString("yyyy-MM-dd") ?? string.Empty
         };
 
-        var signUpResult = await _supabaseClient.Auth.SignUp(
-            request.Email,
-            request.Password,
-            new Supabase.Gotrue.SignUpOptions
-            {
-                Data = metadata
-            }
-        );
-
-        var authUser = signUpResult?.User;
-        if (authUser == null)
-            throw new InvalidOperationException("Không thể tạo tài khoản Supabase Auth.");
+        var authUserId = await _auth.CreateConfirmedUserAsync(email, password, metadata);
 
         var user = new User
         {
-            id = authUser.Id,
-            email = request.Email,
+            id = authUserId,
+            email = email,
             name = request.Name,
             phone = request.Phone,
             birthday = request.Birthday,
@@ -60,8 +62,17 @@ public class UserService
             is_active = true
         };
 
-        var created = await _userRepository.CreateAsync(user);
-        return created.ToResponse();
+        try
+        {
+            var created = await _userRepository.CreateAsync(user);
+            return created.ToResponse();
+        }
+        catch
+        {
+            // Do not leave an Auth account without a profile: it would block registering this email again.
+            await _auth.DeleteUserAsync(authUserId);
+            throw;
+        }
     }
 
     public async Task<UserReponse> UpdateUserAsync(UpdateUserRequest request, string accessToken)
@@ -84,17 +95,7 @@ public class UserService
             throw new UnauthorizedAccessException("Token Supabase không hợp lệ hoặc đã hết hạn.");
         
         await _userRepository.DeleteAsync(user.id!);
-        var adminKey = new[]
-            {
-                configuration["Supabase:ServiceRoleKey"],
-                configuration["SupabaseAdminKey"]
-            }
-            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
-        if (string.IsNullOrWhiteSpace(adminKey))
-            throw new InvalidOperationException("Supabase Admin Auth chưa được cấu hình.");
-
-        await _supabaseClient.AdminAuth(adminKey)
-            .DeleteUser(gotrueUser.Id!);
+        await _auth.DeleteUserAsync(gotrueUser.Id!);
         return true;
     }
 
