@@ -134,3 +134,16 @@ public class RegistrationTests
         public override Task<User> CreateAsync(User entity) => throw new IOException("db down");
     }
 }
+
+public class UserEntityMappingTests
+{
+    [Fact]
+    public void Profile_id_is_sent_on_insert_so_it_matches_the_auth_user()
+    {
+        // With shouldInsert=false PostgREST left the id out and the column default generated a different uuid.
+        var key = typeof(CO4029_BE.Domain.Entities.User).GetProperty("id")!
+            .GetCustomAttributes(typeof(Supabase.Postgrest.Attributes.PrimaryKeyAttribute), false)
+            .Cast<Supabase.Postgrest.Attributes.PrimaryKeyAttribute>().Single();
+        Assert.True(key.ShouldInsert);
+    }
+}
