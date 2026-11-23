@@ -1,20 +1,45 @@
-﻿using MailKit.Net.Smtp;
+using MailKit.Net.Smtp;
 using MimeKit;
 using System;
 
 namespace CO4029_BE.Utils;
 
+/// <summary>The Gmail account that sends OTP codes is not set up (App Settings GmailSender / GmailAppPassword).</summary>
+public sealed class MailNotConfiguredException : IOException
+{
+    public MailNotConfiguredException()
+        : base($"OTP mail is not configured: set {EmailService.SenderKey} and {EmailService.AppPasswordKey}.")
+    {
+    }
+}
+
 public class EmailService : CO4029_BE.Application.Abstractions.IOtpMailer
 {
-    private string _senderEmail;
-    private string _appPassword;
-    public EmailService(IConfiguration configuration)
+    public const string SenderKey = "GmailSender";
+    public const string AppPasswordKey = "GmailAppPassword";
+
+    private readonly string? _senderEmail;
+    private readonly string? _appPassword;
+
+    public EmailService(IConfiguration configuration, ILogger<EmailService>? logger = null)
     {
-        _senderEmail = configuration["GmailSender"]!;
-        _appPassword = configuration["GmailAppPassword"]!;
+        _senderEmail = configuration[SenderKey];
+        _appPassword = configuration[AppPasswordKey];
+        if (!IsConfigured)
+        {
+            logger?.LogError("OTP mail is not configured: {Sender} / {Password} are missing, so registration, password reset and email change cannot send codes.",
+                SenderKey, AppPasswordKey);
+        }
     }
+
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(_senderEmail) && !string.IsNullOrWhiteSpace(_appPassword);
+
     public void SendOTPMail(string recipientMail, string otp)
     {
+        // Without this check MailKit throws ArgumentNullException("address"), which the API would report as a bad request.
+        if (!IsConfigured)
+            throw new MailNotConfiguredException();
+
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress("Agentic AR", _senderEmail));
         message.To.Add(new MailboxAddress("", recipientMail));
