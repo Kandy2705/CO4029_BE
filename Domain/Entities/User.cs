@@ -5,7 +5,8 @@ namespace CO4029_BE.Domain.Entities;
 [Table("user")]
 public class User: BaseModel
 {
-    [PrimaryKey("id", false)]
+    // Sent on insert: a customer profile takes the id of its Supabase Auth user (the column default would invent one).
+    [PrimaryKey("id", true)]
     public string? id { get; set; }
     [Column("name")]
     public string? name { get; set; }
